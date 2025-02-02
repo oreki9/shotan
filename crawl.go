@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/rand"
 	"time"
+	"encoding/json"
 	// "strings"
 
 	"database/sql"
@@ -16,6 +17,7 @@ import (
 
 type IpInfoLink struct {
 	Id int
+	IPAddress string
 	ListTagId string
 	ListGeneralInfoId string
 	ListVulnId string
@@ -23,6 +25,7 @@ type IpInfoLink struct {
 	ListPortId string
 }
 type IpInfoLinkdataHolder struct {
+	IPAddress string
 	tagdata []TagDesc
 	portdata []PortDesc
 	geninfo []GeneralInfo
@@ -42,26 +45,31 @@ func (d CheckAllValidData) isValid() bool {
 type ListPort struct {
 	Id int
 	ListPortId int
+	IPAddress string
 	SpecificPortId int
 }
 type ListTech struct {
 	Id int
 	ListTechId int
+	IPAddress string
 	TechId int
 }
 type ListVuln struct {
 	Id int
 	ListVulnId int
+	IPAddress string
 	VulnId int
 }
 type ListTag struct {
 	Id int
 	ListTagId int
+	IPAddress string
 	TagId int
 }
 type ListGeneralInfo struct {
 	id int
 	ListGeneralInfoId int
+	IPAddress string
 	GeneralInfoId int
 }
 type TagDesc struct {
@@ -90,6 +98,8 @@ type Technology struct {
 }
 func main() {
 	ipaddress := flag.String("ipaddress", "109.206.245.168", "ip address target")
+	mode := flag.String("mode", "detail", "ip address target")
+	//mode: fetch, detail, delete
 	flag.Parse()
 	
 	db, err := sql.Open("mysql", "root:@(127.0.0.1:3306)/shotan")
@@ -97,12 +107,25 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
     }
+	ipaddressStr := *ipaddress
+	flagMode := *mode
 	if (checkAllTable(db, "shotan")){
 		fmt.Println("database is not perfect, now in progress")
 	}else{
 		fmt.Println("database is perfect")
-		fmt.Println(*ipaddress)
-		// crawl(db, *ipaddress)
+		fmt.Println(ipaddressStr)
+	}
+	switch(flagMode){
+	case "fetch":
+		crawl(db, ipaddressStr)
+		break
+	case "detail":
+		fmt.Println(getIPAddressInfo(getDetailIpAddress(db, ipaddressStr)))
+		break
+	case "delete":
+		deleteAllTable(db)
+		break
+	default: break;
 	}
 }
 
@@ -118,6 +141,7 @@ func crawl(db *sql.DB, ipaddress string) {
 		isTechnologyValid: false,
 	}
 	ipinfoHolder := IpInfoLinkdataHolder{
+		IPAddress: ipaddress,
 		tagdata: []TagDesc{},
 		portdata: []PortDesc{},
 		geninfo: []GeneralInfo{},
@@ -140,7 +164,7 @@ func crawl(db *sql.DB, ipaddress string) {
 			// listNewGenInfo = append(listNewGenInfo, newGenInfo)
 		})
 		checkAllDataComplete.isGeneralinfoValid = true
-		checkAllComplete(db, checkAllDataComplete, ipinfoHolder)
+		checkAllComplete(db, ipaddress, checkAllDataComplete, ipinfoHolder)
 		// fmt.Println(ipinfoHolder.geninfo)
 		// fmt.Println("check 1")
 	})
@@ -155,7 +179,7 @@ func crawl(db *sql.DB, ipaddress string) {
 			})
 		}
 		checkAllDataComplete.isTagdescValid = true
-		checkAllComplete(db, checkAllDataComplete, ipinfoHolder)
+		checkAllComplete(db, ipaddress, checkAllDataComplete, ipinfoHolder)
 		// fmt.Println(arrayDescVal)
 		// fmt.Println("")
 	})
@@ -183,7 +207,7 @@ func crawl(db *sql.DB, ipaddress string) {
 			// countU+=1;
 		}
 		checkAllDataComplete.isPortdescValid = true
-		checkAllComplete(db, checkAllDataComplete, ipinfoHolder)
+		checkAllComplete(db, ipaddress, checkAllDataComplete, ipinfoHolder)
 		// fmt.Println("")
 		// fmt.Println(fmt.Sprintf("%d check %d", len(arrayDescVal), len(arrayTitle)))
 	})
@@ -201,18 +225,18 @@ func crawl(db *sql.DB, ipaddress string) {
 			// fmt.Println("")
 		})
 		checkAllDataComplete.isTechnologyValid = true
-		checkAllComplete(db, checkAllDataComplete, ipinfoHolder)
-		fmt.Println("check 2")
+		checkAllComplete(db, ipaddress, checkAllDataComplete, ipinfoHolder)
+		// fmt.Println("check 2")
 	})
 	
 	// get data for vulndesc table
 	c.OnHTML(".card.card-red.card-padding > .table", func(e *colly.HTMLElement) {
-		var countCheck = 0
+		// var countCheck = 0
 		e.ForEach("tr", func(_ int, kf *colly.HTMLElement) {
-			if(countCheck > 0){ return; }
-			countCheck+=1;
+			// if(countCheck > 0){ return; }
+			// countCheck+=1;
 			var valueDom = kf.ChildTexts("td")
-			fmt.Println(valueDom)
+			// fmt.Println(valueDom)
 			var titleVuln = valueDom[0]
 			var descVuln = valueDom[1]
 			ipinfoHolder.vulndata = append(ipinfoHolder.vulndata, VulnDesc{
@@ -222,9 +246,9 @@ func crawl(db *sql.DB, ipaddress string) {
 			})
 			
 		})
-		fmt.Println("check 1")
+		// fmt.Println("check 1")
 		checkAllDataComplete.isVulndescValid = true
-		checkAllComplete(db, checkAllDataComplete, ipinfoHolder)
+		checkAllComplete(db, ipaddress, checkAllDataComplete, ipinfoHolder)
 	})
 	
 	c.OnRequest(func(r *colly.Request) {
@@ -237,9 +261,9 @@ func crawl(db *sql.DB, ipaddress string) {
 	print("start")
 	c.Visit(startUrl)
 }
-func checkAllComplete(db *sql.DB, checkData CheckAllValidData, ipinfoHolder IpInfoLinkdataHolder) (bool) {
+func checkAllComplete(db *sql.DB, ipaddress string, checkData CheckAllValidData, ipinfoHolder IpInfoLinkdataHolder) (bool) {
 	if (checkData.isValid()){
-		insertAllData(db, ipinfoHolder.tagdata, ipinfoHolder.portdata, ipinfoHolder.geninfo, ipinfoHolder.vulndata, ipinfoHolder.techdata)
+		insertAllData(db, ipaddress, ipinfoHolder.tagdata, ipinfoHolder.portdata, ipinfoHolder.geninfo, ipinfoHolder.vulndata, ipinfoHolder.techdata)
 	}
 	return false
 }
@@ -257,47 +281,47 @@ func deleteAllTable(db *sql.DB) (bool) {
 	isDeleteError11, _, _ := getSQLData(db, "DROP TABLE `listport`;")
 	return isDeleteError1 || isDeleteError2 || isDeleteError3 || isDeleteError4 || isDeleteError5 || isDeleteError6 || isDeleteError7 || isDeleteError8 || isDeleteError9 || isDeleteError10 || isDeleteError11
 }
-func insertAllData(db *sql.DB, tagdata []TagDesc, portdata []PortDesc, geninfo []GeneralInfo, vulndata []VulnDesc, techdata []Technology) (bool) {
+func insertAllData(db *sql.DB, ipaddress string, tagdata []TagDesc, portdata []PortDesc, geninfo []GeneralInfo, vulndata []VulnDesc, techdata []Technology) (bool) {
 	listGeneralInfoId, _ := CreateUniqueRandomID(db, "generalinfo", "listgeneralinfoid")
 	// create random id for ListGeneralInfoId
 	for _, item := range geninfo {
 		geninfoid, isValid := insertGeneralInfo(db, item.Title, item.Value)
 		if(isValid){
-			insertListGenInfo(db, listGeneralInfoId, geninfoid)
+			insertListGenInfo(db, listGeneralInfoId, ipaddress, geninfoid)
 		}
 	}
 	listtagid, _ := CreateUniqueRandomID(db, "listtag", "listtagid")
 	for _, item := range tagdata {
 		tagid, isValid := insertTagData(db, item.Title)
 		if(isValid){
-			insertListTag(db, listtagid, tagid)
+			insertListTag(db, listtagid, ipaddress, tagid)
 		}
 	}
 	listportid, _ := CreateUniqueRandomID(db, "listport", "listportid")
 	for _, item := range portdata {
 		portid, isValid := insertPortDesc(db, item.Title, item.Value)
 		if(isValid){
-			insertListPort(db, listportid, portid)
+			insertListPort(db, listportid, ipaddress, portid)
 		}
 	}
 	listvulnid, _ := CreateUniqueRandomID(db, "listvuln", "listvulnid")
 	for _, item := range vulndata {
 		vulnid, isValid := insertVulnDesc(db, item.Title, item.Value)
 		if(isValid){
-			insertListVuln(db, listvulnid, vulnid)
+			insertListVuln(db, listvulnid, ipaddress, vulnid)
 		}
 	}
 	listtechid, _ := CreateUniqueRandomID(db, "listtech", "listtechid")
 	for _, item := range techdata {
 		techid, isValid := insertTechData(db, item.Title, item.Value)
 		if(isValid){
-			insertListTech(db, listtechid, techid)
+			insertListTech(db, listtechid, ipaddress, techid)
 		}
 	}
-	return insertIPInfo(db, listtagid, listGeneralInfoId, listvulnid, listtechid, listportid)
+	return insertIPInfo(db, ipaddress, listtagid, listGeneralInfoId, listvulnid, listtechid, listportid)
 }
-func insertIPInfo(db *sql.DB, listtagid int64, listgeneralinfoid int64, listvulnid int64, listtechid int64, listportid int64) (bool) {
-	var insertSQLStr = fmt.Sprintf("INSERT INTO `ipinfolink`(`listtagid`, `listgeneralinfoid`, `listvulnid`, `listtechid`, `listportid`) VALUES ('%d','%d','%d','%d','%d')", listtagid, listgeneralinfoid, listvulnid, listtechid, listportid)
+func insertIPInfo(db *sql.DB, ipaddress string, listtagid int64, listgeneralinfoid int64, listvulnid int64, listtechid int64, listportid int64) (bool) {
+	var insertSQLStr = fmt.Sprintf("INSERT INTO `ipinfolink`(`ipaddress`, `listtagid`, `listgeneralinfoid`, `listvulnid`, `listtechid`, `listportid`) VALUES ('%s', '%d','%d','%d','%d','%d')", ipaddress, listtagid, listgeneralinfoid, listvulnid, listtechid, listportid)
 	isInsertError, insertRes, _ := getSQLData(db, insertSQLStr)
 	if(!isInsertError){
 		defer insertRes.Close()
@@ -306,9 +330,9 @@ func insertIPInfo(db *sql.DB, listtagid int64, listgeneralinfoid int64, listvuln
 	return false
 }
 func insertPortDesc(db *sql.DB, title string, value string) (int64, bool) {
-	var insertSQLStr = fmt.Sprintf("INSERT INTO `portdesc`(`title`, `value`) VALUES ('%s','%s')", title, value)
+	var insertSQLStr = fmt.Sprintf("INSERT INTO `portdesc`(`title`, `value`) VALUES ('%s', ?)", title)
 	var returnId int64 = 0
-	isInsertError, returnId, _, _ := getSQLResultid(db, insertSQLStr)
+	isInsertError, returnId, _, _ := getSQLResultid(db, insertSQLStr, []string{value})
 	if(!isInsertError){
 		return returnId, true
 	}
@@ -317,16 +341,16 @@ func insertPortDesc(db *sql.DB, title string, value string) (int64, bool) {
 func insertGeneralInfo(db *sql.DB, title string, value string) (int64, bool) {
 	var insertSQLStr = fmt.Sprintf("INSERT INTO `generalinfo`(`title`, `value`) VALUES ('%s','%s')", title, value)
 	var returnId int64 = 0
-	isInsertError, returnId, _, _ := getSQLResultid(db, insertSQLStr)
+	isInsertError, returnId, _, _ := getSQLResultid(db, insertSQLStr, []string{})
 	if(!isInsertError){
 		return returnId, true
 	}
 	return -1, false
 }
 func insertVulnDesc(db *sql.DB, title string, value string) (int64, bool) {
-	var insertSQLStr = fmt.Sprintf("INSERT INTO `vulndesc`(`title`, `value`) VALUES ('%s','%s')", title, value)
+	var insertSQLStr = fmt.Sprintf("INSERT INTO `vulndesc`(`title`, `value`) VALUES ('%s', ?)", title)
 	var returnId int64 = 0
-	isInsertError, returnId, _, _ := getSQLResultid(db, insertSQLStr)
+	isInsertError, returnId, _, _ := getSQLResultid(db, insertSQLStr, []string{value})
 	if(!isInsertError){
 		return returnId, true
 	}
@@ -335,7 +359,7 @@ func insertVulnDesc(db *sql.DB, title string, value string) (int64, bool) {
 func insertTagData(db *sql.DB, title string) (int64, bool) {
 	var insertSQLStr = fmt.Sprintf("INSERT INTO `tagdesc`(`title`) VALUES ('%s')", title)
 	var returnId int64 = 0
-	isInsertError, returnId, _, _ := getSQLResultid(db, insertSQLStr)
+	isInsertError, returnId, _, _ := getSQLResultid(db, insertSQLStr, []string{})
 	if(!isInsertError){
 		return returnId, true
 	}
@@ -344,14 +368,14 @@ func insertTagData(db *sql.DB, title string) (int64, bool) {
 func insertTechData(db *sql.DB, title string, value string) (int64, bool) {
 	var insertSQLStr = fmt.Sprintf("INSERT INTO `technology`(`title`, `value`) VALUES ('%s', '%s')", title, value)
 	var returnId int64 = 0
-	isInsertError, returnId, _, _ := getSQLResultid(db, insertSQLStr)
+	isInsertError, returnId, _, _ := getSQLResultid(db, insertSQLStr, []string{})
 	if(!isInsertError){
 		return returnId, true
 	}
 	return -1, false
 }
-func insertListGenInfo(db *sql.DB, listgeneralinfoid int64, generalinfoid int64) (bool) {
-	var insertSQLStr = fmt.Sprintf("INSERT INTO `listgeneralinfo`(`listgeneralinfoid`, `generalinfoid`) VALUES ('%d','%d')", listgeneralinfoid, generalinfoid)
+func insertListGenInfo(db *sql.DB, listgeneralinfoid int64, ipaddress string, generalinfoid int64) (bool) {
+	var insertSQLStr = fmt.Sprintf("INSERT INTO `listgeneralinfo`(`listgeneralinfoid`, `ipaddress`, `generalinfoid`) VALUES ('%d','%s','%d')", listgeneralinfoid, ipaddress, generalinfoid)
 	isInsertError, insertRes, _ := getSQLData(db, insertSQLStr)
 	if(!isInsertError){
 		defer insertRes.Close()
@@ -359,8 +383,8 @@ func insertListGenInfo(db *sql.DB, listgeneralinfoid int64, generalinfoid int64)
 	}
 	return false
 }
-func insertListTag(db *sql.DB, listtagid int64, tagid int64) (bool) {
-	var insertSQLStr = fmt.Sprintf("INSERT INTO `listtag`(`listtagid`, `tagid`) VALUES ('%d','%d')", listtagid, tagid)
+func insertListTag(db *sql.DB, listtagid int64, ipaddress string, tagid int64) (bool) {
+	var insertSQLStr = fmt.Sprintf("INSERT INTO `listtag`(`listtagid`, `ipaddress`, `tagid`) VALUES ('%d','%s','%d')", listtagid, ipaddress, tagid)
 	isInsertError, insertRes, _ := getSQLData(db, insertSQLStr)
 	if(!isInsertError){
 		defer insertRes.Close()
@@ -368,8 +392,8 @@ func insertListTag(db *sql.DB, listtagid int64, tagid int64) (bool) {
 	}
 	return false
 }
-func insertListVuln(db *sql.DB, listvulnid int64, vulnid int64) (bool) {
-	var insertSQLStr = fmt.Sprintf("INSERT INTO `listvuln`(`listvulnid`, `vulnid`) VALUES ('%d','%d')", listvulnid, vulnid)
+func insertListVuln(db *sql.DB, listvulnid int64, ipaddress string, vulnid int64) (bool) {
+	var insertSQLStr = fmt.Sprintf("INSERT INTO `listvuln`(`listvulnid`, `ipaddress`, `vulnid`) VALUES ('%d','%s', '%d')", listvulnid, ipaddress, vulnid)
 	isInsertError, insertRes, _ := getSQLData(db, insertSQLStr)
 	if(!isInsertError){
 		defer insertRes.Close()
@@ -377,8 +401,8 @@ func insertListVuln(db *sql.DB, listvulnid int64, vulnid int64) (bool) {
 	}
 	return false
 }
-func insertListTech(db *sql.DB, listtechid int64, techid int64) (bool) {
-	var insertSQLStr = fmt.Sprintf("INSERT INTO `listtech`(`listtechid`, `techid`) VALUES ('%d','%d')", listtechid, techid)
+func insertListTech(db *sql.DB, listtechid int64, ipaddress string, techid int64) (bool) {
+	var insertSQLStr = fmt.Sprintf("INSERT INTO `listtech`(`listtechid`, `ipaddress`, `techid`) VALUES ('%d', '%s', '%d')", listtechid, ipaddress, techid)
 	isInsertError, insertRes, _ := getSQLData(db, insertSQLStr)
 	if(!isInsertError){
 		defer insertRes.Close()
@@ -386,13 +410,16 @@ func insertListTech(db *sql.DB, listtechid int64, techid int64) (bool) {
 	}
 	return false
 }
-func insertListPort(db *sql.DB, listportid int64, specificportid int64) (bool) {
-	var insertSQLStr = fmt.Sprintf("INSERT INTO `listport`(`listportid`, `specificportid`) VALUES ('%d','%d')", listportid, specificportid)
-	isInsertError, insertRes, _ := getSQLData(db, insertSQLStr)
+func insertListPort(db *sql.DB, listportid int64, ipaddress string, specificportid int64) (bool) {
+	var insertSQLStr = fmt.Sprintf("INSERT INTO `listport`(`listportid`, `ipaddress`, `specificportid`) VALUES ('%d', '%s', '%d')", listportid, ipaddress, specificportid)
+	isInsertError, insertRes, errCheck := getSQLData(db, insertSQLStr)
 	if(!isInsertError){
 		defer insertRes.Close()
 		return true
 	}
+	print("---")
+	print(errCheck)
+	print("---")
 	return false
 }
 func checkAllTable(db *sql.DB, dbName string) (bool) {
@@ -419,8 +446,8 @@ func getSQLData(db *sql.DB,query string) (bool, *sql.Rows, error) {
     }
 	return isError,res,err
 }
-func getSQLResultid(db *sql.DB,query string) (bool, int64, sql.Result, error) {
-	result, err := db.Exec(query)
+func getSQLResultid(db *sql.DB, query string, value []string) (bool, int64, sql.Result, error) {
+	result, err := db.Exec(query, interfaceSlice(value)...)
 	var isError bool = false
 	if err != nil {
 		isError = true
@@ -437,6 +464,7 @@ func checkIPInfoLink(db *sql.DB, dbName string) (bool) {
 	if(!checkTable(db, dbName, "ipinfolink")){
 		var createSQL = `CREATE TABLE ipinfolink (
 			id INT(20) NOT NULL AUTO_INCREMENT,
+			ipaddress VARCHAR(255) NOT NULL,
 			listtagid INT(20) NOT NULL,
 			listgeneralinfoid INT(20) NOT NULL,
 			listvulnid INT(20) NOT NULL,
@@ -458,7 +486,7 @@ func checkPort(db *sql.DB, dbName string) (bool) {
 		var createSQL = `CREATE TABLE portdesc (
 			specificportid INT(20) NOT NULL AUTO_INCREMENT,
 			title VARCHAR(255) NOT NULL,
-			value VARCHAR(255) NOT NULL,
+			value VARCHAR(7000) NOT NULL,
 			PRIMARY KEY (specificportid)
 		) ENGINE=InnoDB DEFAULT CHARSET=latin1;`
 		isInsertError, insertRes, err := getSQLData(db, createSQL)
@@ -492,7 +520,7 @@ func checkVuln(db *sql.DB, dbName string) (bool) {
 		var createSQL = `CREATE TABLE vulndesc (
 			vulnid INT(20) NOT NULL AUTO_INCREMENT,
 			title VARCHAR(255) NOT NULL,
-			value VARCHAR(255) NOT NULL,
+			value VARCHAR(7000) NOT NULL,
 			PRIMARY KEY (vulnid)
 		) ENGINE=InnoDB DEFAULT CHARSET=latin1;`
 		isInsertError, insertRes, _ := getSQLData(db, createSQL)
@@ -540,6 +568,7 @@ func checkListGeneralInfo(db *sql.DB, dbName string) (bool) {
 		var createSQL = `CREATE TABLE listgeneralinfo (
 			id INT(20) NOT NULL AUTO_INCREMENT,
 			listgeneralinfoid VARCHAR(255) NOT NULL,
+			ipaddress VARCHAR(255) NOT NULL,
 			generalinfoid INT(20) NOT NULL,
 			PRIMARY KEY (id)
 		) ENGINE=InnoDB DEFAULT CHARSET=latin1;`
@@ -556,6 +585,7 @@ func checkListTag(db *sql.DB, dbName string) (bool) {
 		var createSQL = `CREATE TABLE listtag (
 			id INT(20) NOT NULL AUTO_INCREMENT,
 			listtagid INT(20) NOT NULL,
+			ipaddress VARCHAR(255) NOT NULL,
 			tagid INT(20) NOT NULL,
 			PRIMARY KEY (id)
 		) ENGINE=InnoDB DEFAULT CHARSET=latin1;`
@@ -572,6 +602,7 @@ func checkListVuln(db *sql.DB, dbName string) (bool) {
 		var createSQL = `CREATE TABLE listvuln (
 			id INT(20) NOT NULL AUTO_INCREMENT,
 			listvulnid INT(20) NOT NULL,
+			ipaddress VARCHAR(255) NOT NULL,
 			vulnid INT(20) NOT NULL,
 			PRIMARY KEY (id)
 		) ENGINE=InnoDB DEFAULT CHARSET=latin1;`
@@ -588,6 +619,7 @@ func checkListTech(db *sql.DB, dbName string) (bool) {
 		var createSQL = `CREATE TABLE listtech (
 			id INT(20) NOT NULL AUTO_INCREMENT,
 			listtechid INT(20) NOT NULL,
+			ipaddress VARCHAR(255) NOT NULL,
 			techid INT(20) NOT NULL,
 			PRIMARY KEY (id)
 		) ENGINE=InnoDB DEFAULT CHARSET=latin1;`
@@ -604,6 +636,7 @@ func checkListPort(db *sql.DB, dbName string) (bool) {
 		var createSQL = `CREATE TABLE listport (
 			id INT(20) NOT NULL AUTO_INCREMENT,
 			listportid INT(20) NOT NULL,
+			ipaddress VARCHAR(255) NOT NULL,
 			specificportid INT(20) NOT NULL,
 			PRIMARY KEY (id)
 		) ENGINE=InnoDB DEFAULT CHARSET=latin1;`
@@ -653,4 +686,153 @@ func CreateUniqueRandomID(db *sql.DB, tableName, columnName string) (int64, erro
 			return randomID, nil
 		}
 	}
+}
+
+func getDetailIpAddress(db *sql.DB, ipaddress string) IpInfoLinkdataHolder {
+	returnSqlCommand := [][]string {
+		{"`generalinfoid`", "`listgeneralinfo`"},
+		{"`tagid`", "`listtag`"},
+		{"`vulnid`", "`listvuln`"},
+		{"`techid`", "`listtech`"},
+		{"`specificportid`", "`listport`"},
+	}// return column name and table name
+	ipinfoHolder := IpInfoLinkdataHolder{
+		IPAddress: ipaddress,
+		tagdata: []TagDesc{},
+		portdata: []PortDesc{},
+		geninfo: []GeneralInfo{},
+		vulndata: []VulnDesc{},
+		techdata: []Technology{},
+	}
+	for idx, arrVal := range returnSqlCommand {
+		var selectGenInfo = fmt.Sprintf("SELECT %s FROM %s WHERE 1", arrVal[0], arrVal[1])
+		isSelectError, SelectRes, _ := getSQLData(db, selectGenInfo)
+		if(!isSelectError){
+			defer SelectRes.Close()
+			for SelectRes.Next() {
+				idSelect := 0
+				err := SelectRes.Scan(&idSelect)
+				if err != nil { log.Fatal(err) }
+				// fmt.Println("get id selec", idSelect)
+				getBasicData(db, &ipinfoHolder, idx, idSelect)
+			}
+		}
+	}
+	return ipinfoHolder
+	// var selectGenInfo = fmt.Sprintf("SELECT %s FROM %s WHERE 1", listColumnStr, tablename)
+	// isSelectError, SelectRes, _ := getSQLData(db, selectGenInfo)
+	// if(!isSelectError){
+	// 	defer SelectRes.Close()
+	// 	return true
+	// }
+}
+func getBasicData(db *sql.DB, data *IpInfoLinkdataHolder, basedataIdx int, id int) {
+	returnSqlCommand := [][]string {
+		{"`generalinfoId`, `title`, `value`", "`generalinfo`", "`generalinfoId`"},
+		{"`tagid`, `title`", "`tagdesc`", "`tagid`"},
+		{"`vulnid`, `title`, `value`", "`vulndesc`", "`vulnid`"},
+		{"`techid`, `title`, `value`", "`technology`", "`techid`"},
+		{"`specificportid`, `title`, `value`", "`portdesc`", "`specificportid`"},
+	}// return column name and table name
+	var selectGenInfo = fmt.Sprintf("SELECT %s FROM %s WHERE %s = %d", returnSqlCommand[basedataIdx][0], returnSqlCommand[basedataIdx][1], returnSqlCommand[basedataIdx][2], id)
+	isSelectError, SelectRes, _ := getSQLData(db, selectGenInfo)
+	// fmt.Println(selectGenInfo)
+	if(!isSelectError){
+		defer SelectRes.Close()
+		for SelectRes.Next() {
+			switch(basedataIdx){
+			case 0:
+				var dataItem GeneralInfo
+				err := SelectRes.Scan(&dataItem.GeneralInfoId, &dataItem.Title, &dataItem.Value)
+				if err != nil { log.Fatal(err) }
+				data.geninfo = append(data.geninfo, dataItem)
+			case 1:
+				var dataItem TagDesc
+				err := SelectRes.Scan(&dataItem.TagId, &dataItem.Title)
+				if err != nil { log.Fatal(err) }
+				data.tagdata = append(data.tagdata, dataItem)
+			case 2:
+				var dataItem VulnDesc
+				err := SelectRes.Scan(&dataItem.VulnId, &dataItem.Title, &dataItem.Value)
+				if err != nil { log.Fatal(err) }
+				data.vulndata = append(data.vulndata, dataItem)
+			case 3:
+				var dataItem Technology
+				err := SelectRes.Scan(&dataItem.TechId, &dataItem.Title, &dataItem.Value)
+				if err != nil { log.Fatal(err) }
+				data.techdata = append(data.techdata, dataItem)
+			case 4:
+				var dataItem PortDesc
+				err := SelectRes.Scan(&dataItem.SpecificPortId, &dataItem.Title, &dataItem.Value)
+				if err != nil { log.Fatal(err) }
+				data.portdata = append(data.portdata, dataItem)
+			default: break;
+			}
+		}
+	} 
+}
+func getIPAddressInfo(data IpInfoLinkdataHolder) string {
+	listGenInfo := func(listgen []GeneralInfo) []string {
+		var ret = []string{}
+		for _, val := range listgen {
+			ret = append(ret, fmt.Sprintf("{'title': %s, 'value': %s}", val.Title, val.Value))
+		}
+		return ret
+	}(data.geninfo)
+	listPortInfo := func(listport []PortDesc) []string {
+		var ret = []string{}
+		for _, val := range listport {
+			ret = append(ret, fmt.Sprintf("{'title': %s, 'value': %s}", val.Title, val.Value))
+		}
+		return ret
+	}(data.portdata)
+	listVulnInfo := func(listvuln []VulnDesc) []string {
+		var ret = []string{}
+		for _, val := range listvuln {
+			ret = append(ret, fmt.Sprintf("{'title': %s, 'value': %s}", val.Title, val.Value))
+		}
+		return ret
+	}(data.vulndata)
+	listTagInfo := func(listtag []TagDesc) []string {
+		var ret = []string{}
+		for _, val := range listtag {
+			ret = append(ret, val.Title)
+		}
+		return ret
+	}(data.tagdata)
+	listTechInfo := func(listTech []Technology) []string {
+		var ret = []string{}
+		for _, val := range listTech {
+			ret = append(ret, fmt.Sprintf("{'title': '%s', 'value': '%s'}", val.Title, val.Value))
+		}
+		return ret
+	}(data.techdata)
+	return fmt.Sprintf(`{
+		"ipaddress": %s,
+		"geninfo": %s,
+		"listport": %s,
+		"listvuln": %s,
+		"listtag": %s,
+		"listtech": %s,
+	}`, data.IPAddress, jsonArrStr(listGenInfo), jsonArrStr(listPortInfo), jsonArrStr(listVulnInfo), jsonArrStr(listTagInfo), jsonArrStr(listTechInfo))
+}
+func getPrefix(s string, length int) string {
+	if length > len(s) { // Ensure length does not exceed string length
+		length = len(s)
+	}
+	return s[:length]
+}
+func interfaceSlice(slice []string) []interface{} {
+	args := make([]interface{}, len(slice))
+	for i, v := range slice {
+		args[i] = v
+	}
+	return args
+}
+func jsonArrStr(arrStr []string) string {
+	jsonData, err := json.Marshal(arrStr)
+	if err != nil {
+		return "[]"
+	}
+	return string(jsonData)
 }
