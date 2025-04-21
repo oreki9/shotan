@@ -19,7 +19,8 @@ import (
 	// "strings"
 	en "github.com/oreki9/shotan/Entity"
 	"database/sql"
-    _ "github.com/go-sql-driver/mysql"
+    // _ "github.com/go-sql-driver/mysql"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/PuerkitoBio/goquery"
 )
 // add check and update when ipaddress is inside database
@@ -30,7 +31,7 @@ func main() {
 	//mode: fetch, detail, delete
 	flag.Parse()
 	
-	db, err := sql.Open("mysql", "root:@(127.0.0.1:3306)/shotan")
+	db, err := sql.Open("sqlite3", "./shodan.db")
     defer db.Close()
 	if err != nil {
 		log.Fatal(err)

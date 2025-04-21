@@ -107,7 +107,7 @@ func saveWork(client *http.Client, idproject string, isdone string, idtask strin
 }
 func fetchWork(client *http.Client) string {
 	req, err := http.NewRequest("GET", resumeWorkURL+"/resume?idproject="+idproject+"&idtask=c", nil)
-	// req.AddCookie(&http.Cookie{Name: "polito", Value: ""})
+	// req.AddCookie(&http.Cookie{Name: "polito", Value: "a53485160aa2b365bfb446d1a934a87e664a08b8621139f0633e38313662868c!"})
 	if err != nil {
 		fmt.Println("Error creating request:", err)
 		return ""
@@ -138,7 +138,7 @@ func getResumeWork(client *http.Client) Response {
 }
 func fetchHtmlString(client *http.Client, ipaddress string) (body string, isclose bool) {
 	req, err := http.NewRequest("GET", baseURL+"/host/"+ipaddress, nil)
-	req.Header.Set("Cookie", `polito=""`)
+	req.Header.Set("Cookie", `polito="419cafd44bb6683527726763ea5eedba67d50385621139f0633e38313662868c!"`)
 	req.Header.Set("Sec-Ch-Ua", `"Not:A-Brand";v="99", "Chromium";v="112"`)
 	req.Header.Set("Sec-Ch-Ua-Mobile", "?0")
 	req.Header.Set("Sec-Ch-Ua-Platform", `"Windows"`)
