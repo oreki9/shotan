@@ -18,20 +18,20 @@ import (
 	"encoding/json"
 	// "strings"
 	en "github.com/oreki9/shotan/Entity"
+	customutil "github.com/oreki9/shotan/Utils"
 	"database/sql"
-    // _ "github.com/go-sql-driver/mysql"
-	_ "github.com/mattn/go-sqlite3"
+    _ "github.com/go-sql-driver/mysql"
 	"github.com/PuerkitoBio/goquery"
 )
 // add check and update when ipaddress is inside database
 func main() {
-	ipaddress := flag.String("ipaddress", "95.56.230.206", "ip address target")
-	folderurl := flag.String("url", "http://localhost/shotan/shodan%209/", "ip address target")
-	mode := flag.String("mode", "fetch", "ip address target")
-	//mode: fetch, detail, delete
+	ipaddress := flag.String("ipaddress", "109.206.245.168", "ip address target")
+	folderurl := flag.String("url", "http://localhost/shotan/shodan%201/", "ip address target")
+	mode := flag.String("mode", "fetchall", "ip address target")
+	//mode: fetch, fetchall, detail, delete, deleteall
 	flag.Parse()
 	
-	db, err := sql.Open("sqlite3", "./shodan.db")
+	db, err := sql.Open("mysql", "root:@(127.0.0.1:3306)/shotan")
     defer db.Close()
 	if err != nil {
 		log.Fatal(err)
@@ -48,7 +48,7 @@ func main() {
 	case "fetchall":
 		crawlall(db, *folderurl)
 	case "fetch":
-		crawl(db, ipaddressStr)
+		crawl(db, ipaddressStr, *folderurl, true)
 		break
 	// case "detail":
 	// 	jsonData, err := json.Marshal(person) // Convert struct to JSON
@@ -60,6 +60,8 @@ func main() {
 	// 	fmt.Println(getIPAddressInfo(getDetailIpAddress(db, ipaddressStr)))
 	// 	break
 	case "delete":
+		customutil.DeleteIpAddress(db, ipaddressStr)
+	case "deleteall":
 		deleteAllTable(db)
 		break
 	default: break;
@@ -71,6 +73,7 @@ func crawlall(db *sql.DB, url string) {
 	)
 	c.OnHTML("tbody", func(e *colly.HTMLElement) {
 		arrUrl := []string{}
+		useLocalFile := true
 		e.ForEach("tr > td", func(_ int, kf *colly.HTMLElement) {
 			urlVals := kf.ChildAttrs("a", "href")
 			for _, item := range urlVals {
@@ -84,23 +87,23 @@ func crawlall(db *sql.DB, url string) {
 				}
 			}
 		})
-		fmt.Println("get arr url", len(arrUrl))
+		// fmt.Println("get arr url", len(arrUrl))
 		for _, item := range arrUrl {
-			crawl(db, item)
+			crawl(db, item, url, useLocalFile)
 		}
 	})
 	c.OnRequest(func(r *colly.Request) {
 		fmt.Println("Visiting: ", r.URL.String())
 	})
 	c.OnResponse(func(r *colly.Response) {
-		fmt.Println("Response received!")
+		// fmt.Println("Response received!")
 		fmt.Println("Status Code:", r.StatusCode)
-		fmt.Println("Response Body:", string(r.Body)) // Convert bytes to string
+		// fmt.Println("Response Body:", string(r.Body)) // Convert bytes to string
 	})
 
 	c.Visit(url)
 }
-func crawl(db *sql.DB, ipaddress string) {
+func crawl(db *sql.DB, ipaddress string, folderurl string, islocal bool) {
 	c := colly.NewCollector(
 		colly.AllowedDomains(),
 	)
@@ -197,7 +200,7 @@ func crawl(db *sql.DB, ipaddress string) {
 			port := getValueUrl("p", value)
 			fileName := fmt.Sprintf("%s_%s.png", ipaddress, port)
 			printImageBase64(ipaddress, fileName, imagedata[idx])
-			imageURL := fmt.Sprintf("<img src=\"/image/%s/%s\" />", ipaddress, fileName)
+			imageURL := fmt.Sprintf("<img src=\"../image/%s/%s\" style=\"width: 100%s; height: 420px\" />", ipaddress, fileName, "%%")
 			mapImagedata[port] = imageURL
 			// fmt.Println("get value %s", )
 		}
@@ -206,12 +209,8 @@ func crawl(db *sql.DB, ipaddress string) {
 			// if(countU>0) { break; }
 			var searchDOM = fmt.Sprintf("#%s", port)
 			var elementWithID = e.DOM.Find(searchDOM)
-			fmt.Println("we get port baby")
-			fmt.Println(elementWithID.Length())
-			
 			if elementWithID.Length() > 0 {
-				var getLink = e.ChildAttrs(fmt.Sprintf("%s > div > .link", searchDOM), "href")
-				fmt.Println(getLink)
+				// var getLink = e.ChildAttrs(fmt.Sprintf("%s > div > .link", searchDOM), "href")
 				var portTitle = elementWithID.Text()
 				
 				var portDesc = arrayDescVal[idx]
@@ -285,20 +284,17 @@ func crawl(db *sql.DB, ipaddress string) {
 	c.OnError(func(r *colly.Response, err error) {
 		log.Println("Request failed:", err)
 	})
-	// uncomment below line if you enable Async mode
-	// c.Wait()
-	// https://www.shodan.io/host/%s
-	// startUrl := fmt.Sprintf("file_%s.html", ipaddress)
-	// startUrl = "http://localhost/shotan/shodan%209/"+startUrl
-	startUrl := fmt.Sprintf("https://www.shodan.io/host/%s", ipaddress) 
-	
+	startUrl := ""
+	if (islocal) {
+		startUrl = fmt.Sprintf("%sfile_%s.html", folderurl, ipaddress) 
+	}else{
+		startUrl = fmt.Sprintf("%s%s", folderurl, ipaddress) 
+	}
 	fmt.Println(startUrl)
 	c.Visit(startUrl)
 }
 func checkAllComplete(db *sql.DB, ipaddress string, checkData en.CheckAllValidData, ipinfoHolder en.IpInfoLinkdataHolder) (bool) {
-	fmt.Println("is done running all completer")
 	if (checkData.IsValid()){
-		fmt.Println("check all complete")
 		insertAllData(db, ipaddress, ipinfoHolder.Tagdata, ipinfoHolder.Portdata, ipinfoHolder.Geninfo, ipinfoHolder.Vulndata, ipinfoHolder.Techdata)
 	}
 	return false
@@ -319,7 +315,7 @@ func deleteAllTable(db *sql.DB) (bool) {
 }
 func insertAllData(db *sql.DB, ipaddress string, tagdata []en.TagDesc, portdata []en.PortDesc, geninfo []en.GeneralInfo, vulndata []en.VulnDesc, techdata []en.Technology) (bool) {
 	// fmt.Println("is check 0")
-	listGeneralInfoId, _ := CreateUniqueRandomID(db, "generalinfo", "listgeneralinfoid")
+	listGeneralInfoId, _ := CreateUniqueRandomID(db, "listgeneralinfo", "listgeneralinfoid")
 	// create random id for ListGeneralInfoId
 	// if isIpAddressValid(db, 0, ipaddress) { return false }
 	for _, item := range geninfo {
@@ -625,7 +621,6 @@ func isIpAddressValid(db *sql.DB, id int32, ip string) bool {
 	}
 	return false
 }
-
 func checkAllTable(db *sql.DB, dbName string) (bool) {
 	var checkPortListVal = checkListPort(db,dbName) 
 	var checkTechListVal = checkListTech(db, dbName) 

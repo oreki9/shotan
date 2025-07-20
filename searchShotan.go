@@ -107,7 +107,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		// parsedStr := parseCommand("info.country=japan or vuln.title='doby'")
 		// parsedStr := parseCommand("info.country=japan and vuln.title='doby'")
 		commandStr := r.URL.Query().Get("cmd")
-		pageStr := r.URL.Query().Get("page")
+		pageStr := strconv.Itoa((parseInt(r.URL.Query().Get("page"))-1))
 		commandRet, err := base64.StdEncoding.DecodeString(commandStr)
 		if err != nil {
 			log.Fatal("Error decoding Base64:", err)
@@ -220,4 +220,11 @@ func enableCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // Allow all origins
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+}
+func parseInt(val string) int {
+	num, err := strconv.Atoi(val)
+    if err != nil {
+        return 0
+    }
+	return num
 }

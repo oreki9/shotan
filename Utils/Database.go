@@ -262,18 +262,104 @@ func GetDetailIpAddress(db *sql.DB, ipaddress string, filterIdx []int) e.IpInfoL
 				idSelect := 0
 				err := SelectRes.Scan(&idSelect)
 				if err != nil { log.Fatal(err) }
-				// fmt.Println("get id selec", idSelect)
 				GetBasicData(db, &ipinfoHolder, idx, idSelect)
 			}
 		}
 	}
 	return ipinfoHolder
-	// var selectGenInfo = fmt.Sprintf("SELECT %s FROM %s WHERE 1", listColumnStr, tablename)
-	// isSelectError, SelectRes, _ := GetSQLData(db, selectGenInfo)
-	// if(!isSelectError){
-	// 	defer SelectRes.Close()
-	// 	return true
-	// }
+}
+func DeleteIpAddress(db *sql.DB, ipAddress string){
+	returnSqlCommand := [][]string {
+		{"generalinfo", "listgeneralinfoid", "listgeneralinfo"},
+		{"tagdesc", "listtagid", "listtag"},
+		{"vulndesc", "listvulnid", "listvuln"},
+		{"technology", "listtechid", "listtech"},
+		{"portdesc", "listportid", "listport"},
+	}// return column name and table name
+	var selectGenInfo = fmt.Sprintf("SELECT `listgeneralinfoid`, `listtagid`, `listvulnid`, `listtechid`, `listportid` FROM `ipinfolink` WHERE `ipaddress` like '%s'", ipAddress)
+	isSelectError, SelectRes, _ := GetSQLData(db, selectGenInfo)
+	if(!isSelectError){
+		for SelectRes.Next() {
+			fmt.Println("start other command")
+			var dataItem e.IpInfoLink
+			err := SelectRes.Scan(&dataItem.ListGeneralInfoId, &dataItem.ListTagId, &dataItem.ListVulnId, &dataItem.ListTechId, &dataItem.ListPortId)
+			if err != nil { log.Fatal(err) }
+			for idx, arrVal := range returnSqlCommand {
+				idxSqlCmd := ""
+				switch(idx){
+				case 0: idxSqlCmd = dataItem.ListGeneralInfoId
+				break;
+				case 1: idxSqlCmd = dataItem.ListTagId	
+				break;
+				case 2: idxSqlCmd = dataItem.ListVulnId
+				break;
+				case 3: idxSqlCmd = dataItem.ListTechId	
+				break;
+				case 4: idxSqlCmd = dataItem.ListPortId	
+				break;
+				default: break;
+				}
+				if idxSqlCmd != "" {
+					fmt.Println("check idx ", idxSqlCmd)
+					deleteListData(db, idxSqlCmd, arrVal[2])
+					fmt.Println("before delete geninfo")
+					var deleteSqlCmd = fmt.Sprintf("DELETE FROM `%s` WHERE `%s` like %s", arrVal[2], arrVal[1], idxSqlCmd)
+					fmt.Println(deleteSqlCmd)
+					ExecuteSQLData(db, deleteSqlCmd)
+					// defer SelectDelRes.Close()
+				}
+			}
+		}
+	}
+	var deleteSqlCmd = fmt.Sprintf("DELETE FROM `ipinfolink` WHERE `ipaddress` like %s", ipAddress)
+	ExecuteSQLData(db, deleteSqlCmd)
+	defer SelectRes.Close()
+}
+// i dont want to make code more difficult so just base
+func deleteListData(db *sql.DB, ownerSpecificId string, tableNameOwnerList string) {
+	idxReqdata := 0
+	switch(tableNameOwnerList){
+	case "listgeneralinfo":
+		idxReqdata = 0
+		break;
+	case "listtag":
+		idxReqdata = 1
+		break;
+	case "listvuln":
+		idxReqdata = 2
+		break;
+	case "listtech":
+		idxReqdata = 3
+		break;
+	case "listport":
+		idxReqdata = 4
+		break;
+	}
+	tableReqdata := [][]string {
+		{"generalinfo", "generalinfoid", "listgeneralinfo", "listgeneralinfoid"},
+		{"tagdesc", "tagid", "listtag", "listtagid"},
+		{"vulndesc", "vulnid", "listvuln", "listvulnid"},
+		{"technology", "techid", "listtech", "listtechid"},
+		{"portdesc", "specificportid", "listport", "listportid"},
+	}// return column name and table name
+	fmt.Println("delete db ", tableReqdata[idxReqdata][0])
+	var selectGenInfo = fmt.Sprintf("SELECT %s FROM `%s` WHERE `%s` = '%s'", tableReqdata[idxReqdata][1], tableNameOwnerList, tableReqdata[idxReqdata][3], ownerSpecificId)
+	fmt.Println(selectGenInfo)
+	isSelectError, SelectRes, _ := GetSQLData(db, selectGenInfo)
+	if(!isSelectError){
+		for SelectRes.Next() {
+			idxWilldelete := "0"
+			err := SelectRes.Scan(&idxWilldelete)
+			if err != nil { log.Fatal(err) }
+			var deleteSqlCmd = fmt.Sprintf("DELETE FROM `%s` WHERE `%s` like %s", tableReqdata[idxReqdata][0], tableReqdata[idxReqdata][1], idxWilldelete)
+			// if(true){ return; }// for test
+			fmt.Println("delete command ", deleteSqlCmd)
+			ExecuteSQLData(db, deleteSqlCmd)
+			// defer DeleteRes.Close()
+		}
+	}
+	// defer SelectRes.Close()
+	fmt.Println("end delete")
 }
 func GetBasicData(db *sql.DB, data *e.IpInfoLinkdataHolder, basedataIdx int, id int) {
 	returnSqlCommand := [][]string {
@@ -323,6 +409,15 @@ func GetBasicData(db *sql.DB, data *e.IpInfoLinkdataHolder, basedataIdx int, id 
 func GetSQLData(db *sql.DB,query string) (bool, *sql.Rows, error) {
 	// fmt.Println(query)
 	res, err := db.Query(query)
+	var isError bool = false
+    if err != nil {
+        isError = true
+    }
+	return isError,res,err
+}
+func ExecuteSQLData(db *sql.DB,query string) (bool, sql.Result, error) {
+	// fmt.Println(query)
+	res, err := db.Exec(query)
 	var isError bool = false
     if err != nil {
         isError = true
