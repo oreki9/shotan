@@ -22,9 +22,6 @@ func createSqlCheckCommand(isFirstItem bool, tableName string, paternIndex int, 
 		"%s.title LIKE '%%%s%%'",
 	}
 	getIndex := func(isFirstCheck bool, idx int) int {
-		fmt.Println("is kaihatsu")
-		fmt.Println(isFirstCheck)
-		fmt.Println(idx)
 		if(idx>=0 && idx<=3){
 			if(isFirstCheck) { return 7 } else { return 1}
 		}else if(idx>3 && idx<=7){
@@ -55,7 +52,6 @@ func createSqlCheckCommand(isFirstItem bool, tableName string, paternIndex int, 
 		}else if(idx>35 && idx<=38){
 			return 8
 		}else if(idx>39 && idx<=42){
-			fmt.Println("chck tag desc")
 			if(tableName == "tagdesc"){ return 11 }else{ return 7 } 
 		}else{ return -1 }
     }
@@ -87,20 +83,16 @@ func createSqlCheckCommand(isFirstItem bool, tableName string, paternIndex int, 
 		}
 	}(resultIndex)
 	// if(isFourValue && !isFirstItem){ because when info.country = kaza is error
-	fmt.Println(isPassValue)
-	fmt.Println(sqlPatern[resultIndex])
 	switch(isPassValue){
 	case 4:
 		firstValue := value
 		if(isUsingColumn){
-			fmt.Println("is using column")
 			firstValue = columnName
 		}
 		return fmt.Sprintf(sqlPatern[resultIndex], "g", firstValue, "g", value)
 	case 2:
 		return fmt.Sprintf(sqlPatern[resultIndex], "g", value)
 	default:
-		fmt.Println("why you here")
 		firstValue := value
 		if(isUsingColumn){
 			firstValue = columnName
@@ -221,8 +213,6 @@ func CheckPaternToken(arrToken []e.TokenPos) (bool, int, bool) {
 		}
 		if len(arrToken) == len(arrTokenCheck) {
 			isComplete = true
-			fmt.Println("check idx")
-			fmt.Println(idx)
 		}
 		return true, idx, isComplete
 	}
@@ -280,7 +270,6 @@ func DeleteIpAddress(db *sql.DB, ipAddress string){
 	isSelectError, SelectRes, _ := GetSQLData(db, selectGenInfo)
 	if(!isSelectError){
 		for SelectRes.Next() {
-			fmt.Println("start other command")
 			var dataItem e.IpInfoLink
 			err := SelectRes.Scan(&dataItem.ListGeneralInfoId, &dataItem.ListTagId, &dataItem.ListVulnId, &dataItem.ListTechId, &dataItem.ListPortId)
 			if err != nil { log.Fatal(err) }
@@ -300,11 +289,8 @@ func DeleteIpAddress(db *sql.DB, ipAddress string){
 				default: break;
 				}
 				if idxSqlCmd != "" {
-					fmt.Println("check idx ", idxSqlCmd)
 					deleteListData(db, idxSqlCmd, arrVal[2])
-					fmt.Println("before delete geninfo")
 					var deleteSqlCmd = fmt.Sprintf("DELETE FROM `%s` WHERE `%s` like %s", arrVal[2], arrVal[1], idxSqlCmd)
-					fmt.Println(deleteSqlCmd)
 					ExecuteSQLData(db, deleteSqlCmd)
 					// defer SelectDelRes.Close()
 				}
@@ -342,9 +328,7 @@ func deleteListData(db *sql.DB, ownerSpecificId string, tableNameOwnerList strin
 		{"technology", "techid", "listtech", "listtechid"},
 		{"portdesc", "specificportid", "listport", "listportid"},
 	}// return column name and table name
-	fmt.Println("delete db ", tableReqdata[idxReqdata][0])
 	var selectGenInfo = fmt.Sprintf("SELECT %s FROM `%s` WHERE `%s` = '%s'", tableReqdata[idxReqdata][1], tableNameOwnerList, tableReqdata[idxReqdata][3], ownerSpecificId)
-	fmt.Println(selectGenInfo)
 	isSelectError, SelectRes, _ := GetSQLData(db, selectGenInfo)
 	if(!isSelectError){
 		for SelectRes.Next() {
@@ -353,13 +337,11 @@ func deleteListData(db *sql.DB, ownerSpecificId string, tableNameOwnerList strin
 			if err != nil { log.Fatal(err) }
 			var deleteSqlCmd = fmt.Sprintf("DELETE FROM `%s` WHERE `%s` like %s", tableReqdata[idxReqdata][0], tableReqdata[idxReqdata][1], idxWilldelete)
 			// if(true){ return; }// for test
-			fmt.Println("delete command ", deleteSqlCmd)
 			ExecuteSQLData(db, deleteSqlCmd)
 			// defer DeleteRes.Close()
 		}
 	}
 	// defer SelectRes.Close()
-	fmt.Println("end delete")
 }
 func GetBasicData(db *sql.DB, data *e.IpInfoLinkdataHolder, basedataIdx int, id int) {
 	returnSqlCommand := [][]string {

@@ -37,9 +37,11 @@ func createGetAllTable(valueSelect string, idx int) []e.Command {
 		"OR tag.title='%s'",
 		"OR port.title='%s'",
 		"OR port.value='%s'",
+		"OR tech.title='%s'",
+		"OR tech.value='%s'",
 	}
 	var patternIndex = []int{
-		33, 17, 17, 17, 17, 17, 17, 17,
+		33, 17, 17, 17, 17, 17, 17, 17, 17, 17,
 	}
 	allParsedCommand := []e.Command{}
 	for idxCheck, val := range generateAllTableSelect {

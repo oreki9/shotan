@@ -106,7 +106,7 @@ func saveWork(client *http.Client, idproject string, isdone string, idtask strin
 	}
 }
 func fetchWork(client *http.Client) string {
-	req, err := http.NewRequest("GET", resumeWorkURL+"/resume?idproject="+idproject+"&idtask=c", nil)
+	req, err := http.NewRequest("GET", resumeWorkURL+"/resume?idproject="+idproject, nil)
 	// req.AddCookie(&http.Cookie{Name: "polito", Value: "a53485160aa2b365bfb446d1a934a87e664a08b8621139f0633e38313662868c!"})
 	if err != nil {
 		fmt.Println("Error creating request:", err)

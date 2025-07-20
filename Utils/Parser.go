@@ -18,11 +18,6 @@ func ParseCommand(s string) []e.TokenPos {
 			Pos: pos,
 			Lit: lit,
 		})
-		// if len(lit) > 0 {
-		// 	fmt.Printf("[%4d:%-3d] %10s - %s\n", pos.Line, pos.Char, tok, strconv.QuoteToASCII(lit))
-		// 	} else {
-		// 	fmt.Printf("[%4d:%-3d] %10s\n", pos.Line, pos.Char, tok)
-		// }
 	}
 	return listToken
 }
@@ -47,6 +42,8 @@ const (
 
 	PORT
 
+	TECH
+
 	TITLE
 
 	VALUE
@@ -59,7 +56,7 @@ var tokenMap = map[lexer.Token]string{
 	VULN:   "VULN",
 	TAG:   "TAG",
 	PORT:   "PORT",
-
+	TECH:   "TECH",
 
 	TITLE:   "TITLE",
 	VALUE:   "VALUE",
@@ -74,6 +71,7 @@ func getIsCustomKeyword(s string) string {
 	case "INFO": fallthrough
 	case "VULN": fallthrough
 	case "TAG": fallthrough
+	case "TECH": fallthrough
 	case "PORT": return "CUSTOM"
 	
 	case "TITLE": fallthrough
@@ -169,14 +167,17 @@ func createSameTableSql(cmd e.CommandSameTable) string {
 	result := ""//ex: "table1.column like `%value%` AND table2.column like `%value%` "
 	for idx, cmdItem := range cmd.Command {
 		// var sqlCommandStr = ""//ex: and table1.column like `%value%`
-		// fmt.Println(cmdItem)
 		tableName := strToTable(getTableNameFromPaternIndex(cmdItem))
 		columnName := getColumnNameFromPaternIndex(cmdItem)
 		valueSql := getValueFromPaternIndex(cmdItem)
-		// fmt.Println(valueSql)
 		isFirstItem := (idx==0)
-		result+=createSqlCheckCommand(isFirstItem, tableName, cmdItem.IndexPatern, columnName, valueSql)
-		
+		commandSameTableConcat := createSqlCheckCommand(isFirstItem, tableName, cmdItem.IndexPatern, columnName, valueSql)
+		if((idx > 0)){
+			if(!(commandSameTableConcat[0:3] == "AND" || commandSameTableConcat[0:2] == "OR")){
+				result+="AND "
+			}
+		}
+		result+=commandSameTableConcat
 	}
 	return result
 	// fmt.Sprintf("%s",result)
@@ -187,6 +188,7 @@ func strToTable(s string) string {
 		case "VULN": return "vulndesc"
 		case "TAG": return "tagdesc"
 		case "PORT": return "portdesc"
+		case "TECH": return "technology"
 		default: return s
 	}
 }
@@ -211,49 +213,3 @@ func CreateBaseSqlToSelect(item e.CommandSameTable) string {
 	whereSql := createSameTableSql(item)
 	return (fmt.Sprintf(selectVal, tableListName, item.Table, tableCompareId, tableCompareId, whereSql))
 }
-
-// func getIPAddressInfo(data IpInfoLinkdataHolder) string {
-// 	listGenInfo := func(listgen []GeneralInfo) []string {
-// 		var ret = []string{}
-// 		for _, val := range listgen {
-// 			ret = append(ret, fmt.Sprintf("{'title': %s, 'value': %s}", val.Title, val.Value))
-// 		}
-// 		return ret
-// 	}(data.geninfo)
-// 	listPortInfo := func(listport []PortDesc) []string {
-// 		var ret = []string{}
-// 		for _, val := range listport {
-// 			ret = append(ret, fmt.Sprintf("{'title': %s, 'value': %s}", val.Title, val.Value))
-// 		}
-// 		return ret
-// 	}(data.portdata)
-// 	listVulnInfo := func(listvuln []VulnDesc) []string {
-// 		var ret = []string{}
-// 		for _, val := range listvuln {
-// 			ret = append(ret, fmt.Sprintf("{'title': %s, 'value': %s}", val.Title, val.Value))
-// 		}
-// 		return ret
-// 	}(data.vulndata)
-// 	listTagInfo := func(listtag []TagDesc) []string {
-// 		var ret = []string{}
-// 		for _, val := range listtag {
-// 			ret = append(ret, val.Title)
-// 		}
-// 		return ret
-// 	}(data.tagdata)
-// 	listTechInfo := func(listTech []Technology) []string {
-// 		var ret = []string{}
-// 		for _, val := range listTech {
-// 			ret = append(ret, fmt.Sprintf("{'title': '%s', 'value': '%s'}", val.Title, val.Value))
-// 		}
-// 		return ret
-// 	}(data.techdata)
-// 	return fmt.Sprintf(`{
-// 		"ipaddress": %s,
-// 		"geninfo": %s,
-// 		"listport": %s,
-// 		"listvuln": %s,
-// 		"listtag": %s,
-// 		"listtech": %s,
-// 	}`, data.IPAddress, jsonArrStr(listGenInfo), jsonArrStr(listPortInfo), jsonArrStr(listVulnInfo), jsonArrStr(listTagInfo), jsonArrStr(listTechInfo))
-// }
