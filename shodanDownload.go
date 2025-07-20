@@ -136,7 +136,7 @@ func getResumeWork(client *http.Client) Response {
 	}
 	return response
 }
-func fetchHtmlString(client *http.Client, ipaddress string) (body string, isclose bool) {
+func fetchHtmlString(client *http.Client, ipaddress string) (statusCode int, body string, isclose bool) {
 	req, err := http.NewRequest("GET", baseURL+"/host/"+ipaddress, nil)
 	req.Header.Set("Cookie", `polito="419cafd44bb6683527726763ea5eedba67d50385621139f0633e38313662868c!"`)
 	req.Header.Set("Sec-Ch-Ua", `"Not:A-Brand";v="99", "Chromium";v="112"`)
@@ -153,30 +153,30 @@ func fetchHtmlString(client *http.Client, ipaddress string) (body string, isclos
 	req.Host = "www.shodan.io"
 	if err != nil {
 		fmt.Println("Error creating request:", err)
-		return "", true
+		return 0, "", true
 	}
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println("Error making request:", err)
-		return "", true
+		return 0, "", true
 	}
 	defer resp.Body.Close()
 	if(resp.StatusCode==200){
 		body, err := ioutil.ReadAll(resp.Body)
 		bodyStr := string(body)
 		if(strings.Contains(bodyStr, "No information available for")){
-			return "", false
+			return 200, "", false
 		}else if(strings.Contains(bodyStr, "<a href=\"/dashboard\" class=\"highlight-success\">Login</a>")){
-			return "", true
+			return 200, "", true
 		}else{
 			if err != nil {
 				fmt.Println("Error reading response body:", err)
-				return "", false
+				return 200, "", false
 			}
-			return bodyStr, false
+			return 200, bodyStr, false
 		}
 	}else{
-		return "", false
+		return resp.StatusCode, "", false
 	}
 }
 func convertIPToSlice(ip string) ([]int, error) {
@@ -240,11 +240,12 @@ func downloadAllPages(client *http.Client ,start, end string) error {
 		ipAddressNow = ipAddress
 		// Perform the HTTP request
 		fmt.Println("get client "+ipAddress)
-		stringResponse, isclose := fetchHtmlString(client, ipAddress)
+		statusCode, stringResponse, isclose := fetchHtmlString(client, ipAddress)
 		if(isclose){
 			err := errors.New("session ended")
 			return err
 		}
+		if (statusCode == 429){ delay(1000 * time.Millisecond) }
 		if(stringResponse != ""){
 			// resp.StatusCode
 			errorCheck := saveStringToFile(ipAddress+".html", stringResponse)
@@ -255,7 +256,7 @@ func downloadAllPages(client *http.Client ,start, end string) error {
 			}
 		}
 		// Delay for 1 second
-		// delay(100 * time.Millisecond)
+		delay(100 * time.Millisecond)
 		// Increment the IP address
 		incrementIP(startIP)
 		// Check if we have reached the end IP
