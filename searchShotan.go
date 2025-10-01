@@ -86,7 +86,7 @@ func interfaceSlice(slice []string) []interface{} {
 
 func handler(w http.ResponseWriter, r *http.Request) {
     // fmt.Println(r.URL.Path)
-	db, err := sql.Open("mysql", "root:@(127.0.0.1:3306)/shotan")
+	db, err := sql.Open("mysql", "root:1919@(127.0.0.1:3306)/shotan")
 	defer db.Close()
 	if err != nil {
 		log.Fatal(err)

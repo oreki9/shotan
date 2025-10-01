@@ -26,12 +26,12 @@ import (
 // add check and update when ipaddress is inside database
 func main() {
 	ipaddress := flag.String("ipaddress", "109.206.245.168", "ip address target")
-	folderurl := flag.String("url", "http://localhost/shotan/shodan%202/", "ip address target")
-	mode := flag.String("mode", "fetchallas", "ip address target")
+	folderurl := flag.String("url", "http://localhost/shotan/shodan%201/", "ip address target")
+	mode := flag.String("mode", "fetchall", "ip address target")
 	//mode: fetch, fetchall, detail, delete, deleteall
 	flag.Parse()
 	
-	db, err := sql.Open("mysql", "root:@(127.0.0.1:3306)/shotan")
+	db, err := sql.Open("mysql", "root:1919@(127.0.0.1:3306)/shotan")
     defer db.Close()
 	if err != nil {
 		log.Fatal(err)
@@ -46,7 +46,6 @@ func main() {
 	}
 	switch(flagMode){
 	case "fetchall":
-		// TODO: add pause and resume 
 		crawlall(db, *folderurl)
 	case "fetch":
 		crawl(db, ipaddressStr, *folderurl, true)
@@ -75,13 +74,10 @@ func crawlall(db *sql.DB, url string) {
 	c.OnHTML("tbody", func(e *colly.HTMLElement) {
 		arrUrl := []string{}
 		useLocalFile := true
-		startCrawl := false;
 		e.ForEach("tr > td", func(_ int, kf *colly.HTMLElement) {
 			urlVals := kf.ChildAttrs("a", "href")
 			for _, item := range urlVals {
-				if strings.Contains(item, "82.66.91.142"){ startCrawl = true; }
-				fmt.Println("get url: ",startCrawl)
-				if(startCrawl == false) { continue; }
+				// fmt.Println("get url: ",item)
 				if strings.Contains(item, "file_") {
 					re := regexp.MustCompile(`\d+\.\d+\.\d+\.\d+`)
 					match := re.FindString(item)
@@ -319,7 +315,7 @@ func deleteAllTable(db *sql.DB) (bool) {
 }
 func insertAllData(db *sql.DB, ipaddress string, tagdata []en.TagDesc, portdata []en.PortDesc, geninfo []en.GeneralInfo, vulndata []en.VulnDesc, techdata []en.Technology) (bool) {
 	// fmt.Println("is check 0")
-	listGeneralInfoId := getLastIndexTable(db, "listgeneralinfo", "listgeneralinfoid")
+	listGeneralInfoId, _ := CreateUniqueRandomID(db, "listgeneralinfo", "listgeneralinfoid")
 	// create random id for ListGeneralInfoId
 	// if isIpAddressValid(db, 0, ipaddress) { return false }
 	for _, item := range geninfo {
@@ -333,10 +329,9 @@ func insertAllData(db *sql.DB, ipaddress string, tagdata []en.TagDesc, portdata 
 		}
 		if(isValid){
 			insertListGenInfo(db, listGeneralInfoId, ipaddress, geninfoid)
-			updateLastIndex(db, "listgeneralinfo", listGeneralInfoId)
 		}
 	}
-	listtagid := getLastIndexTable(db, "listtag", "listtagid")
+	listtagid, _ := CreateUniqueRandomID(db, "listtag", "listtagid")
 	for _, item := range tagdata {
 		var isValid = false
 		var tagid int64 = 0
@@ -348,10 +343,9 @@ func insertAllData(db *sql.DB, ipaddress string, tagdata []en.TagDesc, portdata 
 		}
 		if(isValid){
 			insertListTag(db, listtagid, ipaddress, tagid)
-			updateLastIndex(db, "listtag", listtagid)
 		}
 	}
-	listportid := getLastIndexTable(db, "listport", "listportid")
+	listportid, _ := CreateUniqueRandomID(db, "listport", "listportid")
 	for _, item := range portdata {
 		var isValid = false
 		var portid int64 = 0
@@ -363,10 +357,9 @@ func insertAllData(db *sql.DB, ipaddress string, tagdata []en.TagDesc, portdata 
 		}
 		if(isValid){
 			insertListPort(db, listportid, ipaddress, portid)
-			updateLastIndex(db, "listport", listportid)
 		}
 	}
-	listvulnid := getLastIndexTable(db, "listvuln", "listvulnid")
+	listvulnid, _ := CreateUniqueRandomID(db, "listvuln", "listvulnid")
 	for _, item := range vulndata {
 		var isValid = false
 		var vulnid int64 = 0
@@ -378,10 +371,9 @@ func insertAllData(db *sql.DB, ipaddress string, tagdata []en.TagDesc, portdata 
 		}
 		if(isValid){
 			insertListVuln(db, listvulnid, ipaddress, vulnid)
-			updateLastIndex(db, "listvuln", listvulnid)
 		}
 	}
-	listtechid := getLastIndexTable(db, "listtech", "listtechid")
+	listtechid, _ := CreateUniqueRandomID(db, "listtech", "listtechid")
 	for _, item := range techdata {
 		var isValid = false
 		var techid int64 = 0
@@ -393,7 +385,6 @@ func insertAllData(db *sql.DB, ipaddress string, tagdata []en.TagDesc, portdata 
 		}
 		if(isValid){
 			insertListTech(db, listtechid, ipaddress, techid)
-			updateLastIndex(db, "listtech", listtechid)
 		}
 	}
 	return insertIPInfo(db, ipaddress, listtagid, listGeneralInfoId, listvulnid, listtechid, listportid)
@@ -636,8 +627,7 @@ func checkAllTable(db *sql.DB, dbName string) (bool) {
 	var checkVulnListVal = checkListVuln(db, dbName) 
 	var checkTagListVal = checkListTag(db, dbName) 
 	var checkGenInfoListVal = checkListGeneralInfo(db, dbName)
-	var checkLastIndex = checkUpdaterIndex(db, dbName)
-	var checkListTable = checkLastIndex && checkPortListVal && checkTechListVal && checkVulnListVal && checkTagListVal && checkGenInfoListVal
+	var checkListTable = checkPortListVal && checkTechListVal && checkVulnListVal && checkTagListVal && checkGenInfoListVal
 	var checkTechnologyVal = checkTechnology(db, dbName)
 	var checkTagDescVal = checkTagDesc(db, dbName)
 	var checkVulnVal = checkVuln(db, dbName)
@@ -683,7 +673,9 @@ func checkIPInfoLink(db *sql.DB, dbName string) (bool) {
 			listportid INT(20) NOT NULL,
 			PRIMARY KEY (id)
 		) ENGINE=InnoDB DEFAULT CHARSET=latin1;`
-		isInsertError, insertRes, _ := getSQLData(db, createSQL)
+		isInsertError, insertRes, checkErr := getSQLData(db, createSQL)
+		fmt.Println("get value database")
+		fmt.Println(checkErr)
 		if(!isInsertError){
 			defer insertRes.Close()
 			return true
@@ -725,31 +717,6 @@ func checkGeneralInfo(db *sql.DB, dbName string) (bool) {
 		}
 	}
 	return false
-}
-func checkUpdaterIndex(db *sql.DB, dbName string) (bool) {
-	if(!checkTable(db, dbName, "lastindextable")){
-		var createSQL = `CREATE TABLE lastindextable (
-			id INT(20) NOT NULL AUTO_INCREMENT,
-			title VARCHAR(255) NOT NULL,
-			value INT(20) NOT NULL,
-			PRIMARY KEY (id)
-		) ENGINE=InnoDB DEFAULT CHARSET=latin1;`
-		isInsertError, insertRes, _ := getSQLData(db, createSQL)
-		if(!isInsertError){
-			defer insertRes.Close()
-			return true
-		}
-	}
-	return false
-}
-func updateLastIndex(db *sql.DB, tableName string, value int64) (bool) {
-	var updateSQL = fmt.Sprintf("UPDATE `lastindextable` SET `value` = '%s' where `%s` like %s", tableName,value) 
-	isUpdateError, updateRes, _ := getSQLData(db, updateSQL)
-	if(!isUpdateError){
-		defer updateRes.Close()
-		return false
-	}
-	return true
 }
 func checkVuln(db *sql.DB, dbName string) (bool) {
 	if(!checkTable(db, dbName, "vulndesc")){
@@ -906,19 +873,6 @@ func checkTable(db *sql.DB, dbName string, tableName string) (bool) {
 func GenerateRandomID() int64 {
 	rand.Seed(time.Now().UnixNano())
 	return rand.Int63n(1000000) // Generate a random number in a defined range
-}
-func getLastIndexTable(db *sql.DB, tableName, columnName string) int64 {
-	var selectLast = fmt.Sprintf("SELECT `value` FROM `lastindextable` WHERE `title` like '%s'", tableName)
-	isSelectLastError, selectLastRes, _ := getSQLData(db, selectLast)
-	var lastIndex = 0
-	if(!isSelectLastError){
-		defer selectLastRes.Close()
-		selectLastRes.Next()
-		err := selectLastRes.Scan(&lastIndex)
-		// if err != nil { log.Fatal(err) }
-		// return lastIndex
-	}
-	return lastIndex
 }
 
 // CreateUniqueRandomID generates a random ID and ensures it's unique in the database

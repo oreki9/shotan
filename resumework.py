@@ -5,6 +5,7 @@ import mysql.connector
 app = Flask(__name__)
 hostSql = '127.0.0.1'
 userSql = 'root'
+passSql = '1919'
 databaseSql = 'test'
 
 @app.route('/')
@@ -14,7 +15,7 @@ def index():
 
 @app.route('/check')
 def check():
-    if checkTable():
+    if checkTableAll():
         return returnResponse('200', 'all table is exist')
     else:
         return returnResponse('204', 'all table is created')
@@ -29,7 +30,7 @@ def save():
     conn = mysql.connector.connect(
         host=hostSql,
         user=userSql,
-        password='',
+        password=passSql,
         database=databaseSql
     )
     cursor = conn.cursor()
@@ -42,6 +43,24 @@ def save():
         cursor.execute(f"UPDATE `workresume` SET `taskdesc`='{taskinput}', `isprogress`= false WHERE `idproject` = '{idproject}' and `idtask` = '{idtask}'")
         conn.commit()
         return returnResponse('200', 'status task is updated')
+@app.route('/getworkrunning')
+def getworkrunning():
+    idproject = request.args.get('idproject', '')
+    idtask = request.args.get('idtask', '')
+    conn = mysql.connector.connect(
+        host=hostSql,
+        user=userSql,
+        password='',
+        database=databaseSql
+    )
+    returnStr = ""
+    cursor = conn.cursor(buffered=True)
+    cursor.execute(f"SELECT `idtask` from `workresume` WHERE `idproject` = '{idproject}' and `isprogress`= false")
+    rows = cursor.fetchall()
+    for row in rows:
+        returnStr += "\""+row[0]+"\","
+    return "{\"list\": ["+returnStr[:-1]+"]}"
+
 @app.route('/resume')
 def resume():
     idproject = request.args.get('idproject', '')
@@ -49,7 +68,7 @@ def resume():
     conn = mysql.connector.connect(
         host=hostSql,
         user=userSql,
-        password='',
+        password=passSql,
         database=databaseSql
     )
     # todo: add column that mark row as in progress
@@ -84,7 +103,7 @@ def newtask():
     conn = mysql.connector.connect(
         host=hostSql,
         user=userSql,
-        password='',
+        password=passSql,
         database=databaseSql
     )
     cursor = conn.cursor()
@@ -109,11 +128,11 @@ def newtask():
         cursor.execute(f"UPDATE `tasklastid` SET `lastid`='{nextlastidtask}' WHERE `idproject` = '{idproject}'")
         conn.commit()
         return returnResponse('200', 'new task is success created')
-def checkTable():
+def checkTableAll():
     conn = mysql.connector.connect(
         host=hostSql,
         user=userSql,
-        password='',
+        password=passSql,
         database=databaseSql
     )
     cursor = conn.cursor()
