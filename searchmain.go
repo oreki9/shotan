@@ -1,3 +1,4 @@
+package main
 import (
 	"fmt"
 	cmd "github.com/oreki9/shotan/searchcli"
