@@ -19,9 +19,9 @@ import (
 
 
 
-func main() {
-	fmt.Println(handler("search", "49.0.252.39", "cosco", 1))
-}
+// func main() {
+// 	fmt.Println(handler("search", "49.0.252.39", "cosco", 1))
+// }
 func mainParse(){
 	
 }
