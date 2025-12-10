@@ -7,7 +7,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
     "log"
 	"strconv"
-	"net/http"
+	// "net/http"
 	"encoding/json"
 	// "os"
 	// "bufio"
@@ -207,7 +207,7 @@ func handler(command, ip, cmd string, page int) string {
 		jsonData, err := json.Marshal(returnObj) // Convert struct to JSON
 		if err != nil {
 			fmt.Println("Error:", err)
-			return
+			return ""
 		}
 		return string(jsonData)
 	}else{
