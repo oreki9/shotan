@@ -106,12 +106,12 @@ func handler(command, ip, cmd string, page int) string {
 		// parsedStr := parseCommand("info.country=japan and vuln.title='doby'")
 		commandStr := cmd
 		pageStr := strconv.Itoa((page-1))
-		commandRet, err := base64.StdEncoding.DecodeString(commandStr)
-		if err != nil {
-			log.Fatal("Error decoding Base64:", err)
-		}
-		fmt.Println(string(commandRet))
-		parsedStr := p.ParseCommand(string(commandRet))
+		// commandRet, err := base64.StdEncoding.DecodeString(commandStr)
+		// if err != nil {
+		// 	log.Fatal("Error decoding Base64:", err)
+		// }
+		// fmt.Println(string(commandRet))
+		parsedStr := p.ParseCommand(cmd)
 		listCommand := []e.Command{}
 		lastTokenPos := []e.TokenPos{}
 		invalidToken := []e.TokenPos{}
