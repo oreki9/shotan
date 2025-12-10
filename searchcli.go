@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"encoding/base64"
+	// "encoding/base64"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
     "log"
@@ -104,7 +104,7 @@ func handler(command, ip, cmd string, page int) string {
 		// parsedStr := parseCommand("cosco")	
 		// parsedStr := parseCommand("info.country=japan or vuln.title='doby'")
 		// parsedStr := parseCommand("info.country=japan and vuln.title='doby'")
-		commandStr := cmd
+		// commandStr := cmd
 		pageStr := strconv.Itoa((page-1))
 		// commandRet, err := base64.StdEncoding.DecodeString(commandStr)
 		// if err != nil {
