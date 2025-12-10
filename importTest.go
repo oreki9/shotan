@@ -50,8 +50,9 @@ func main() {
 			sqlCmd := statement.String()
 			_, execErr := db.Exec(sqlCmd)
 			if execErr != nil {
-				fmt.Println("Error executing:", sqlCmd)
-				fmt.Println("→", execErr)
+				fmt.Println("error execute command")
+				// fmt.Println("Error executing:", sqlCmd)
+				// fmt.Println("→", execErr)
 			}
 			statement.Reset()
 		}

@@ -155,7 +155,6 @@ func handler(command, ip, cmd string, page int) string {
 				for _, val := range append(lastTokenPos, token) {
 					fmt.Print(p.GetTokenValue(val))
 				}
-				fmt.Println("")
 				if(len(token.Lit)>0){
 					invalidToken = append(invalidToken, token)
 				}
@@ -200,7 +199,6 @@ func handler(command, ip, cmd string, page int) string {
 			if err != nil { log.Fatal(err) }
 		}
 		selectAllSQL := fmt.Sprintf("SELECT %s FROM (%s) AS ResultTable", "*", collectionTable)
-		fmt.Println(selectAllSQL)
 		isSelectError, SelectRes, _ := p.GetSQLData(db, selectAllSQL)
 		listIpAddress := []e.IPAddressGenInfo{}
 		if(!isSelectError){
