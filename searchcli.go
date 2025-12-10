@@ -20,7 +20,7 @@ import (
 
 
 func main() {
-	fmt.Println(handler("detailoo", "49.0.252.39", "cosco", 1))
+	fmt.Println(handler("search", "49.0.252.39", "cosco", 1))
 }
 func mainParse(){
 	
