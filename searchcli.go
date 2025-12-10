@@ -19,9 +19,27 @@ import (
 
 
 
-// func main() {
-// 	fmt.Println(handler("search", "49.0.252.39", "cosco", 1))
-// }
+func main() {
+	// fmt.Println(handler("search", "49.0.252.39", "cosco", 1))
+	if len(os.Args) < 5 {
+		fmt.Println("Usage:")
+		fmt.Println("  app <command> <ip> <cmd> <page>")
+		os.Exit(1)
+	}
+
+	command := os.Args[1]
+	ip := os.Args[2]
+	cmd := os.Args[3]
+
+	page, err := strconv.Atoi(os.Args[4])
+	if err != nil {
+		fmt.Println("Error: page must be a number")
+		os.Exit(1)
+	}
+
+	result := handler(command, ip, cmd, page)
+	fmt.Println(result)
+}
 func mainParse(){
 	
 }
