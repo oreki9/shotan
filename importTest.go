@@ -13,7 +13,7 @@ import (
 
 func main() {
 	// Replace with your credentials and database name
-	dsn := "root:1919@tcp(127.0.0.1:3306)/shotan?multiStatements=true"
+	dsn := "root:@tcp(127.0.0.1:3306)/passagem_passagemain?multiStatements=true"
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err)

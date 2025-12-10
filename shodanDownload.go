@@ -256,7 +256,7 @@ func downloadAllPages(client *http.Client ,start, end string) error {
 			}
 		}
 		// Delay for 1 second
-		delay(100 * time.Millisecond)
+		delay(30 * time.Millisecond)
 		// Increment the IP address
 		incrementIP(startIP)
 		// Check if we have reached the end IP

@@ -31,7 +31,7 @@ func main() {
 	//mode: fetch, fetchall, detail, delete, deleteall
 	flag.Parse()
 	
-	db, err := sql.Open("mysql", "root:1919@(127.0.0.1:3306)/shotan")
+	db, err := sql.Open("mysql", "root:@(127.0.0.1:3306)/shotan")
     defer db.Close()
 	if err != nil {
 		log.Fatal(err)
