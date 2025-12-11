@@ -126,6 +126,8 @@ func handler(command, ip, cmd string, page int) string {
 		pageStr := strconv.Itoa((page-1))
 		commandRet, err := base64.StdEncoding.DecodeString(cmd)
 		if err != nil {
+			fmt.Println("check base64")
+			fmt.Println(err)
 			log.Fatal("Error decoding Base64:", err)
 		}
 		// fmt.Println(string(commandRet))
