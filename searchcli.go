@@ -129,7 +129,7 @@ func handler(command, ip, cmd string, page int) string {
 			log.Fatal("Error decoding Base64:", err)
 		}
 		// fmt.Println(string(commandRet))
-		parsedStr := p.ParseCommand(commandRet)
+		parsedStr := p.ParseCommand(string(commandRet))
 		listCommand := []e.Command{}
 		lastTokenPos := []e.TokenPos{}
 		invalidToken := []e.TokenPos{}
