@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"encoding/base64"
+	// "encoding/base64"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
     "log"
@@ -124,12 +124,12 @@ func handler(command, ip, cmd string, page int) string {
 		// parsedStr := parseCommand("info.country=japan and vuln.title='doby'")
 		// commandStr := cmd
 		pageStr := strconv.Itoa((page-1))
-		commandRet, err := base64.StdEncoding.DecodeString(cmd)
-		if err != nil {
-			log.Fatal("Error decoding Base64:", err, cmd)
-		}
+		// commandRet, err := base64.StdEncoding.DecodeString(cmd)
+		// if err != nil {
+		// 	log.Fatal("Error decoding Base64:", err, cmd)
+		// }
 		// fmt.Println(string(commandRet))
-		parsedStr := p.ParseCommand(string(commandRet))
+		parsedStr := p.ParseCommand(cmd)
 		listCommand := []e.Command{}
 		lastTokenPos := []e.TokenPos{}
 		invalidToken := []e.TokenPos{}
